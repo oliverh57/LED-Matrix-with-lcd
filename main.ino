@@ -9,7 +9,7 @@ unsigned short int encoderPOS = 0;
 int encoder0PinALast = LOW;
 int n = LOW;
 
-#define switch  8
+#define switch  2
 
 #define I2C_ADDR 0x27  // Define I2C Address where the PCF8574A is
 #define BACKLIGHT_PIN 3
@@ -21,7 +21,19 @@ int n = LOW;
 #define D6_pin 6
 #define D7_pin 7
 
-String programs[] = {"colours", "static", "rainbow!", "droplets", "random"};
+String programs[] = {"wave", "static", "rainbow", "droplets", "random"};
+/*                     |        |          |          |           |
+                       |        |          |          |           \---*/ String random_modes[] = {"1", "2", "3", "4", "5"}; /*
+                       |        |          |          |
+                       |        |          |          \--- */ String droplets_mode[] = {"mono cromatic", "colourful", "rising", "dense", "sparse"}; /*
+                       |        |          |
+                       |        |          \--- */ String rainbow_mode[] = {"pulse", "vertical", "horizontal", "whole colour", "random"}; /*
+                       |        |
+                       |        \---- */ String static_mode[] = {"red", "green", "blue", "purple", "yellow"}; /*
+                       |
+                       \---- */ String wave_mode[] = {"wavey", "really wavey", "supper wavey", "something", "something"}; /*
+                       
+*/
 const int numprograms = 5;
 
 uint8_t retarrow[8] = {0x1, 0x1, 0x5, 0x9, 0x1f, 0x8, 0x4};
@@ -38,6 +50,16 @@ void encoderisr ()  {
   up = (digitalRead(CLK) == digitalRead(DT));
 }
 
+volatile bool switchstate;
+
+void switchisr ()  {
+  if (switchstate == true){
+    switchstate = false;
+  }else{
+    switchstate = true;
+  }
+}
+
 void setup() {
   lcd.createChar(0, retarrow);
   pinMode(CLK, INPUT);
@@ -52,7 +74,8 @@ void setup() {
   lcd.setBacklight(HIGH);
   lcd.home();  // go home
 
-  attachInterrupt (digitalPinToInterrupt(3),encoderisr,FALLING);
+  attachInterrupt (digitalPinToInterrupt(3),encoderisr,FALLING); //rotary encoder isr
+  attachInterrupt (digitalPinToInterrupt(2),switchisr,RISING); //switch isr
 
 }
 
@@ -65,28 +88,19 @@ void loop() {
     }
     turndetected = false;
   }
-
+  
   lcd.clear();
-  lcd.home();
-  lcd.write(126);
-  //lcd.write(' ');
+
+  if(switchstate == HIGH){ //button mode
+    lcd.setCursor(0, 0);
+    lcd.write(126);  
+  }else{
+    lcd.setCursor(0, 1);
+    lcd.write(126); 
+  }
+  
+  lcd.setCursor(1, 0);
   lcd.print(programs[encoderPOS % numprograms]);
 
   delay(10);
-  /*
-  n = digitalRead(encoder0PinA);
-  if ((encoder0PinALast == LOW) && (n == HIGH)) {
-    if (digitalRead(encoder0PinB) == LOW) {
-      encoderPOS--;
-    } else {
-      encoderPOS++;
-    }
-
-    lcd.clear();
-    lcd.print(">" + progrmas[encoderPOS]);
-    lcd.setCursor(0, 1);
-    lcd.print(" hello");
-  }
-  encoder0PinALast = n;
-  */
 }
