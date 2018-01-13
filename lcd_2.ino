@@ -58,12 +58,12 @@ void encoderisr ()  {
 volatile bool switchstate = false;
 
 void switchisr ()  {
-  /*
+  
   if (switchstate == true){
     switchstate = false;
   }else{
     switchstate = true;
-  }*/
+  }
 }
 //get value from pot and map to 8 bit value (0 -> 255)
 void setup() {
