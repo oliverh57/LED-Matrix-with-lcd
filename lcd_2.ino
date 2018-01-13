@@ -1,15 +1,17 @@
 #include <Wire.h>
 #include <LCD.h>
 #include <LiquidCrystal_I2C.h>
-#include <Bounce2.h>
 
-Bounce debouncer = Bounce(); // Instantiate a Bounce object
+//uncoment for serial debuing
+#define SERIAL_DEBUG
 
-#define DT 3
-#define CLK 4
+#define pot A0 //brightnes pot
 
-unsigned short int encoder0POS = 0;
-unsigned short int encoder1POS = 0;
+#define DT 3 //pin for rot encoder
+#define CLK 4 //pin for rot encoder
+
+unsigned short int encoder0POS = 0; //value for rot encoder mode A
+unsigned short int encoder1POS = 0; //value for rot encoder mode B
 
 int encoder0PinALast = LOW;
 
@@ -35,15 +37,15 @@ String programs[] = {"wave", "static", "rainbow", "droplets", "random"};
                        |        |
                        |        \---- */ String mode_1[] = {"red", "green", "blue", "purple", "yellow"}; /*
                        |
-                       \---- */ String mode_0[] = {"wavey", "really wavey", "supper wavey", "something", "something"}; /*
+                       \---- */ String mode_0[] = {"static 1", "static 2", "moveing 1", "moving 2", "moving 3"}; /*
                        
 */
 #define numprograms 5
 
+
 //uint8_t retarrow[8] = {0x1, 0x1, 0x5, 0x9, 0x1f, 0x8, 0x4};
 
 LiquidCrystal_I2C lcd(I2C_ADDR, En_pin, Rw_pin, Rs_pin, D4_pin, D5_pin, D6_pin, D7_pin);
-
 
 volatile bool turndetected;
 volatile bool up;
@@ -53,36 +55,37 @@ void encoderisr ()  {
   up = (digitalRead(CLK) == digitalRead(DT));
 }
 
-volatile bool switchstate;
+volatile bool switchstate = false;
 
 void switchisr ()  {
-  
+  /*
   if (switchstate == true){
     switchstate = false;
   }else{
     switchstate = true;
-  }
+  }*/
 }
-
+//get value from pot and map to 8 bit value (0 -> 255)
 void setup() {
-  debouncer.attach(switch_pin);
-  debouncer.interval(5); // interval in ms
 
-  setup_LED(); //run all setup for fast LED
+  setupLED(); //run all setup for fast LED
   
   pinMode(CLK, INPUT);
   pinMode(DT, INPUT);
 
   pinMode(switch_pin, INPUT_PULLUP);
+  pinMode(pot, INPUT); //declare brihgtnes pot as input
 
-  lcd.begin(16, 2);
+  lcd.begin(16, 2); //begin LCD
 
   // Switch on the backlight
   lcd.setBacklightPin(BACKLIGHT_PIN, POSITIVE);
   lcd.setBacklight(HIGH);
   lcd.home();  // go home
 
-  Serial.begin(57600);
+  #if defined(SERIAL_DEBUG)
+    Serial.begin(9600); //begin serial comunication at 57600 baud 
+  #endif
 
   attachInterrupt (digitalPinToInterrupt(3),encoderisr,FALLING); //rotary encoder isr
   attachInterrupt (digitalPinToInterrupt(2),switchisr,RISING); //switch isr
@@ -90,41 +93,36 @@ void setup() {
 }
 
 void loop() {
-  if (turndetected) {
-    if(switchstate){
-      if (up) {
-        encoder0POS++;
-      } else {
-        encoder0POS--;
-      }
-    }else{
-      if (up) {
-        encoder1POS++;
-      } else {
-        encoder1POS--;
-      }
-    }
-    turndetected = false; //rest isr flag
-  }
+  encoderREFRESH(); //refresh encder
+  lcdREFRESH(); //refresh lcd
   
-  lcd.clear(); //refresh lcd
-
-  if(switchstate){ //button mode
-    lcd.setCursor(0, 0);
-    lcd.write(126);  
-  }else{
-    lcd.setCursor(0, 1);
-    lcd.write(126); 
-  }
-  
-  lcd.setCursor(1, 0);
   lcd.print(programs[encoder0POS % numprograms]);
 
   lcd.setCursor(1, 1);
-  lcd.print(mode_1[encoder1POS % numprograms]);
+  
+  switch(encoder0POS % numprograms){
+    case 0://wave
+      wave_animation(encoder1POS % numprograms); //if mode = wave ->  run wave function with option as pram and update lcd
+      break;
+    case 1://static
+      static_animation(encoder1POS % numprograms); //if mode = static -> run static function with option as pram and update lcd
+      break;
+    case 2:
+      //static_animation(encoder1POS % numprograms); //if mode = static, run static function with option as pram
+      lcd.print(mode_2[encoder1POS % numprograms]);//update lcd
+      break;
+    case 3:
+      //static_animation(encoder1POS % numprograms); //if mode = static, run static function with option as pram
+      lcd.print(mode_2[encoder1POS % numprograms]);//update lcd
+      break;
+    case 4:
+      //static_animation(encoder1POS % numprograms); //if mode = static, run static function with option as pram
+      lcd.print(mode_3[encoder1POS % numprograms]);//update lcd
+      break;
+  }
+  
+  updateBrightnes(); //update brightnes from pot
 
-  if(encoder0POS % numprograms == 1){static_animation(encoder1POS % numprograms);} //if mode = static, run static function with option as pram
-
-  delay(100); //relay to prevent lcd flicker from onstannt refresh 
+  delay(10); //relay to prevent lcd flicker from onstannt refresh 
 
 }
